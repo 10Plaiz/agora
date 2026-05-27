@@ -1,0 +1,15 @@
+# Public repository context setup
+#
+# Keep private AI/team context local.
+
+context/*
+
+# Common private support material
+archives/
+references/
+*.local.md
+*.secret.md
+*.env
+.env
+.env.*
+!.env.example
