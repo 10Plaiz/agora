@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { LeadCardData } from "@/lib/capella-data-api";
 
 type Stage = "new" | "outreach" | "in-call" | "closed";
 type Urgency = "high" | "medium" | "low";
@@ -29,23 +30,6 @@ type Urgency = "high" | "medium" | "low";
 type Task = {
   label: string;
   done: boolean;
-};
-
-type Lead = {
-  id: string;
-  name: string;
-  company: string;
-  stage: Stage;
-  dealValue: number;
-  score: number;
-  urgency: Urgency;
-  starred: boolean;
-  progress: number;
-  summary: string;
-  aiHint: string;
-  scoreNotes: string[];
-  tasks: Task[];
-  followUp: string;
 };
 
 type DragItem = {
@@ -76,179 +60,6 @@ const STAGES: Array<{
   },
 ];
 
-const INITIAL_LEADS: Lead[] = [
-  {
-    id: "lead_001",
-    name: "Optivance",
-    company: "Optivance",
-    stage: "new",
-    dealValue: 20000,
-    score: 72,
-    urgency: "high",
-    starred: true,
-    progress: 28,
-    summary:
-      "Inbound enterprise lead with a short buying window. They want a lightweight pilot and asked for a pricing range before the next call.",
-    aiHint: "AI signal: urgency is high because budget and timeline were both mentioned.",
-    scoreNotes: ["Budget confirmed", "Pilot interest", "Fast follow-up requested"],
-    tasks: [
-      { label: "Send intro deck", done: true },
-      { label: "Share pilot scope", done: false },
-      { label: "Book discovery call", done: false },
-    ],
-    followUp:
-      "Thanks for the quick intro today. I’ve attached the deck and a simple pilot outline so we can keep things moving.",
-  },
-  {
-    id: "lead_002",
-    name: "Velvet & Volt",
-    company: "Velvet & Volt",
-    stage: "new",
-    dealValue: 10000,
-    score: 58,
-    urgency: "medium",
-    starred: false,
-    progress: 22,
-    summary:
-      "New lead from product-led signup. They are evaluating the core workflow and need a short demo focused on team setup.",
-    aiHint: "AI signal: medium urgency, mostly educational until a demo is booked.",
-    scoreNotes: ["Demo requested", "Single-thread evaluation", "Setup questions"],
-    tasks: [
-      { label: "Qualify team size", done: false },
-      { label: "Send demo link", done: true },
-    ],
-    followUp:
-      "Great speaking today. I’ll send a short demo invite and a few setup notes so your team can take a look.",
-  },
-  {
-    id: "lead_003",
-    name: "Arcanis Group",
-    company: "Arcanis Group",
-    stage: "outreach",
-    dealValue: 15000,
-    score: 64,
-    urgency: "medium",
-    starred: true,
-    progress: 41,
-    summary:
-      "Outbound sequence is warm. The contact opened the last email and replied with interest in a seat-based quote.",
-    aiHint: "AI signal: engagement is real, but the next step still needs a live conversation.",
-    scoreNotes: ["Opened last email", "Seat quote requested", "Good reply rate"],
-    tasks: [
-      { label: "Send seat-based quote", done: false },
-      { label: "Confirm decision maker", done: false },
-    ],
-    followUp:
-      "Following up with the seat-based quote we discussed. Happy to answer any rollout questions before we book time.",
-  },
-  {
-    id: "lead_004",
-    name: "Cybrink",
-    company: "Cybrink",
-    stage: "outreach",
-    dealValue: 1000,
-    score: 36,
-    urgency: "low",
-    starred: false,
-    progress: 12,
-    summary:
-      "Early outreach only. They clicked once and have not responded yet, so this stays in light nurture mode.",
-    aiHint: "AI signal: keep it light; no strong buying intent yet.",
-    scoreNotes: ["One click", "No reply yet", "Nurture lane"],
-    tasks: [
-      { label: "Send one follow-up", done: false },
-      { label: "Move to nurture if silent", done: false },
-    ],
-    followUp:
-      "Just checking in with one useful example from a similar team. If timing is off, I can circle back later.",
-  },
-  {
-    id: "lead_005",
-    name: "Aura",
-    company: "Aura",
-    stage: "in-call",
-    dealValue: 22000,
-    score: 81,
-    urgency: "high",
-    starred: true,
-    progress: 72,
-    summary:
-      "Live discovery call with strong technical interest. They asked about integrations, onboarding, and implementation support.",
-    aiHint: "AI signal: strong fit; the conversation is actively moving toward a next step.",
-    scoreNotes: ["Live discovery", "Integration questions", "Implementation fit"],
-    tasks: [
-      { label: "Capture integration requirements", done: true },
-      { label: "Send implementation plan", done: false },
-      { label: "Schedule technical deep dive", done: false },
-    ],
-    followUp:
-      "Great conversation today. I’ll send the implementation outline and some integration notes so we can keep the momentum.",
-  },
-  {
-    id: "lead_006",
-    name: "Salto",
-    company: "Salto",
-    stage: "in-call",
-    dealValue: 9000,
-    score: 67,
-    urgency: "medium",
-    starred: false,
-    progress: 63,
-    summary:
-      "Mid-call and active. They are comparing vendors and want a simple proof point around speed to value.",
-    aiHint: "AI signal: keep answering objections and land a clear pilot path.",
-    scoreNotes: ["Comparing vendors", "Pilot likely", "Needs speed proof"],
-    tasks: [
-      { label: "Answer vendor comparison", done: true },
-      { label: "Share ROI example", done: false },
-    ],
-    followUp:
-      "I’ll send the ROI example we discussed and a short recap of how the pilot would work on your side.",
-  },
-  {
-    id: "lead_007",
-    name: "Virelia Corp",
-    company: "Virelia Corp",
-    stage: "closed",
-    dealValue: 3000,
-    score: 94,
-    urgency: "low",
-    starred: true,
-    progress: 100,
-    summary:
-      "Closed-won and ready for onboarding. The only work left is handoff and the first kickoff meeting.",
-    aiHint: "AI signal: deal is done; focus on smooth onboarding and expansion readiness.",
-    scoreNotes: ["Signed", "Onboarding queued", "Expansion ready"],
-    tasks: [
-      { label: "Send onboarding pack", done: true },
-      { label: "Schedule kickoff", done: true },
-    ],
-    followUp:
-      "Welcome aboard. I’ve attached the onboarding pack and a quick kickoff agenda so we can get your team rolling.",
-  },
-  {
-    id: "lead_008",
-    name: "Luminatech",
-    company: "Luminatech",
-    stage: "closed",
-    dealValue: 14000,
-    score: 90,
-    urgency: "low",
-    starred: false,
-    progress: 100,
-    summary:
-      "Closed-lost but with a clear future re-entry date. The contact wants to revisit once the procurement freeze ends.",
-    aiHint: "AI signal: keep the relationship warm and re-open later.",
-    scoreNotes: ["Closed-lost", "Future re-entry", "Warm relationship"],
-    tasks: [
-      { label: "Set re-open reminder", done: true },
-      { label: "Send recap note", done: true },
-    ],
-    followUp:
-      "Thanks again for the conversation. I’ll stay in touch and circle back when the freeze lifts.",
-  },
-];
-
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -276,7 +87,7 @@ function LeadCard({
   onToggleStar,
   onMove,
 }: {
-  lead: Lead;
+  lead: LeadCardData;
   onOpen: (id: string) => void;
   onToggleStar: (id: string) => void;
   onMove: (id: string, stage: Stage) => void;
@@ -400,7 +211,7 @@ function KanbanColumn({
   onMove,
 }: {
   stage: (typeof STAGES)[number];
-  leads: Lead[];
+  leads: LeadCardData[];
   onOpen: (id: string) => void;
   onToggleStar: (id: string) => void;
   onMove: (id: string, stage: Stage) => void;
@@ -467,7 +278,7 @@ function KanbanColumn({
 }
 
 export default function CRMDashboard() {
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
+  const [leads, setLeads] = useState<LeadCardData[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("summary");
@@ -486,10 +297,10 @@ export default function CRMDashboard() {
           throw new Error(`Failed to load leads (${response.status})`);
         }
 
-        const data = (await response.json()) as Lead[];
+        const data = (await response.json()) as LeadCardData[];
 
-        if (!cancelled && Array.isArray(data) && data.length > 0) {
-          setLeads(data);
+        if (!cancelled) {
+          setLeads(Array.isArray(data) ? data : []);
           setLoadError(null);
         }
       } catch (error) {
@@ -509,7 +320,7 @@ export default function CRMDashboard() {
   }, []);
 
   const persistLeadPatch = useCallback(
-    async (id: string, changes: Partial<Lead>) => {
+    async (id: string, changes: Partial<LeadCardData>) => {
       try {
         const response = await fetch(`/api/leads/${encodeURIComponent(id)}`, {
           method: "PATCH",
@@ -551,6 +362,8 @@ export default function CRMDashboard() {
   );
 
   const selectedLead = leads.find((lead) => lead.id === selectedLeadId) ?? null;
+
+  const hasLeads = leads.length > 0;
 
   useEffect(() => {
     if (!selectedLead) {
@@ -655,6 +468,14 @@ export default function CRMDashboard() {
                 ))}
               </div>
             </div>
+
+              {!hasLeads && !loadError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm text-slate-600 shadow-sm">
+                    No leads found in Couchbase yet.
+                  </div>
+                </div>
+              )}
 
             {selectedLead && (
               <>

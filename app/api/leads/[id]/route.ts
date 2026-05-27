@@ -15,11 +15,12 @@ export async function GET(
     const { document } = await getLeadDocument(id);
     return NextResponse.json(document);
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load lead";
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to load lead",
+        error: message,
       },
-      { status: 500 }
+      { status: message.startsWith("Unable to reach Couchbase Data API") ? 503 : 500 }
     );
   }
 }
@@ -43,11 +44,12 @@ export async function PATCH(
     const lead = await updateLeadDocument(id, nextDocument, etag);
     return NextResponse.json(lead);
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to update lead";
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to update lead",
+        error: message,
       },
-      { status: 500 }
+      { status: message.startsWith("Unable to reach Couchbase Data API") ? 503 : 500 }
     );
   }
 }
@@ -63,11 +65,12 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete lead";
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to delete lead",
+        error: message,
       },
-      { status: 500 }
+      { status: message.startsWith("Unable to reach Couchbase Data API") ? 503 : 500 }
     );
   }
 }

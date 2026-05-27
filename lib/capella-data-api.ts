@@ -7,15 +7,41 @@ type CapellaConfig = {
   collection: string;
 };
 
-export type LeadDocument = {
+export type LeadStage = "new" | "outreach" | "in-call" | "closed";
+export type LeadUrgency = "high" | "medium" | "low";
+
+export type RawLeadDocument = {
   id: string;
   type: "lead";
+  leadId?: string;
+  company: string;
+  contactName?: string;
+  name?: string;
+  stage: LeadStage;
+  dealValue: number;
+  fitScore?: number;
+  priority?: LeadUrgency;
+  owner?: string;
+  lastTouchAt?: string;
+  notes?: string;
+  summary?: string;
+  starred?: boolean;
+  progress?: number;
+  aiHint?: string;
+  scoreNotes?: string[];
+  tasks: Array<{ label: string; done: boolean }>;
+  followUp?: string;
+  updatedAt: string;
+};
+
+export type LeadCardData = {
+  id: string;
   name: string;
   company: string;
-  stage: "new" | "outreach" | "in-call" | "closed";
+  stage: LeadStage;
   dealValue: number;
   score: number;
-  urgency: "high" | "medium" | "low";
+  urgency: LeadUrgency;
   starred: boolean;
   progress: number;
   summary: string;
@@ -23,7 +49,6 @@ export type LeadDocument = {
   scoreNotes: string[];
   tasks: Array<{ label: string; done: boolean }>;
   followUp: string;
-  updatedAt: string;
 };
 
 function env(name: string, fallbackName?: string, defaultValue?: string) {
@@ -77,14 +102,23 @@ async function readBody(response: Response) {
 
 async function capellaRequest(path: string, init: RequestInit = {}) {
   const config = getCapellaConfig();
-  const response = await fetch(`${config.baseUrl}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      Authorization: authHeader(config),
-      ...(init.headers ?? {}),
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${config.baseUrl}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        Authorization: authHeader(config),
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Unable to reach Couchbase Data API at ${config.baseUrl}. Check outbound HTTPS access, proxy/firewall settings, and the cluster URL. (${detail})`
+    );
+  }
 
   const body = await readBody(response);
 
@@ -102,7 +136,43 @@ async function capellaRequest(path: string, init: RequestInit = {}) {
   return { response, body };
 }
 
-export async function listLeadDocuments(): Promise<LeadDocument[]> {
+export function mapLeadDocumentToCard(document: RawLeadDocument): LeadCardData {
+  const score = document.fitScore ?? 0;
+  const urgency = document.priority ?? "low";
+  const name = document.contactName ?? document.name ?? document.company;
+  const summary = document.summary ?? document.notes ?? "";
+  const dealValue = document.dealValue ?? 0;
+
+  return {
+    id: document.id,
+    name,
+    company: document.company,
+    stage: document.stage,
+    dealValue,
+    score,
+    urgency,
+    starred: document.starred ?? urgency === "high",
+    progress: document.progress ?? Math.min(score, 100),
+    summary,
+    aiHint:
+      document.aiHint ??
+      "AI signal: Review the lead notes and move it through the pipeline.",
+    scoreNotes:
+      document.scoreNotes ?? ([document.notes ?? "No notes yet"].filter(Boolean) as string[]),
+    tasks:
+      document.tasks ??
+      ([
+        { label: "Review lead details", done: true },
+        { label: "Update next step", done: false },
+      ] as Array<{ label: string; done: boolean }>),
+    followUp:
+      document.followUp ??
+      document.notes ??
+      "Follow up from the CRM dashboard.",
+  };
+}
+
+export async function listLeadDocuments(): Promise<LeadCardData[]> {
   const config = getCapellaConfig();
   const statement = `SELECT META(lead).id AS id, lead.* FROM \`${config.bucket}\`.\`${config.scope}\`.\`${config.collection}\` AS lead WHERE lead.type = "lead" ORDER BY lead.updatedAt DESC`;
 
@@ -123,7 +193,7 @@ export async function listLeadDocuments(): Promise<LeadDocument[]> {
     return [];
   }
 
-  return (body as { results: LeadDocument[] }).results;
+  return (body as { results: RawLeadDocument[] }).results.map(mapLeadDocumentToCard);
 }
 
 export async function getLeadDocument(id: string) {
@@ -133,12 +203,12 @@ export async function getLeadDocument(id: string) {
   );
 
   return {
-    document: body as LeadDocument,
+    document: body as RawLeadDocument,
     etag: response.headers.get("etag"),
   };
 }
 
-export async function createLeadDocument(document: LeadDocument) {
+export async function createLeadDocument(document: RawLeadDocument) {
   const config = getCapellaConfig();
 
   await capellaRequest(
@@ -157,7 +227,7 @@ export async function createLeadDocument(document: LeadDocument) {
 
 export async function updateLeadDocument(
   id: string,
-  document: LeadDocument,
+  document: RawLeadDocument,
   etag?: string | null
 ) {
   const config = getCapellaConfig();

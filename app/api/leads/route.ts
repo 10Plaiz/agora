@@ -7,11 +7,12 @@ export async function GET() {
     const leads = await listLeadDocuments();
     return NextResponse.json(leads);
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load leads";
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to load leads",
+        error: message,
       },
-      { status: 500 }
+      { status: message.startsWith("Unable to reach Couchbase Data API") ? 503 : 500 }
     );
   }
 }
@@ -37,11 +38,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(lead, { status: 201 });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create lead";
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to create lead",
+        error: message,
       },
-      { status: 500 }
+      { status: message.startsWith("Unable to reach Couchbase Data API") ? 503 : 500 }
     );
   }
 }

@@ -29,12 +29,13 @@ export async function GET() {
       user: typeof body === "object" && body && "user" in body ? body.user : null,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Capella test failed";
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Capella test failed",
+        error: message,
       },
-      { status: 500 }
+      { status: message.startsWith("Unable to reach Couchbase Data API") ? 503 : 500 }
     );
   }
 }
